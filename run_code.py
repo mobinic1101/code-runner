@@ -1,5 +1,6 @@
 import asyncio
 import ast
+from typing import Tuple
 
 
 class NotAllowedImportError(Exception):
@@ -24,7 +25,7 @@ async def check_imports(code: str, allowed_imports: set):
                 raise NotAllowedImportError(f"Import '{node.module}' is not allowed")
         
 
-async def execute_code(file, allowed_imports: set=None, timeout:int=5, **kwargs):
+async def execute_code(file, args: Tuple, allowed_imports: set=None, timeout:int=5):
     """
     Args:
         file (UploadFile): the pure user uploaded file.
@@ -44,7 +45,7 @@ async def execute_code(file, allowed_imports: set=None, timeout:int=5, **kwargs)
     try:
         await check_imports(code, allowed_imports)
         import uploaded_file # type: ignore
-        res = await asyncio.wait_for(uploaded_file.solve(**kwargs), timeout=timeout)
+        res = await asyncio.wait_for(uploaded_file.solve(*args), timeout=timeout)
 
     except AttributeError:
         return {
