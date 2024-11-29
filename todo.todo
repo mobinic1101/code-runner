@@ -1,2 +1,1 @@
 remove the uploaded file after the process is done.
-stop the uvicorn server (which is the server the fastapi runs on) after job is done.
