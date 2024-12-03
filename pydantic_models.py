@@ -9,5 +9,6 @@ class TestCase(BaseModel):
 
 
 class Data(BaseModel):
+    execution_id: int
     allowed_imports: Set[str]
     test_case: List[TestCase]
