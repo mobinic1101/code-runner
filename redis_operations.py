@@ -1,8 +1,9 @@
 import redis
 from typing import List, Optional, Dict
+from . import settings
 
 class RedisOperations:
-    def __init__(self, host: str = 'localhost', port: int = 6379, db: int = 0):
+    def __init__(self, host: str = settings.REDIS_HOST, port: int = settings.REDIS_PORT, db: int = 0):
         self.client = redis.Redis(host=host, port=port, db=db)
 
     def set_value(self, key: str, value: str, ex: int=None) -> bool:
