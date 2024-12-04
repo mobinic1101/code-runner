@@ -5,9 +5,11 @@ from typing import Tuple, List
 from concurrent.futures import ThreadPoolExecutor
 from .pydantic_models import TestCase
 from . import redis_operations
+from . import settings
 
 
 FILE_PATH = "./uploaded_files/uploaded_file.py"
+redis_client = redis_operations.RedisOperations()
 
 
 class NotAllowedImportError(Exception):
@@ -125,6 +127,11 @@ def extract_function(python_file, allowed_imports: set = None):
         result["error_message"] = (
             "Please wrap your solution in a function named 'solve'."
         )
+    except Exception as e:
+        result["error"] = "Error"
+        result["error_message"] = (
+            str(e)
+        )
     os.remove(FILE_PATH) # cleanup!
     return result
 
@@ -163,15 +170,13 @@ def run_tests(func, test_cases: List[TestCase], execution_id: str):
             future = executor.submit(
                 lambda futures: [future.result() for future in futures], futures
             )
-            result["test_result"] = future.result(timeout=5)
+            result["test_result"] = future.result(timeout=settings.RUN_TESTS_TIMEOUT)
         except TimeoutError as e:
             result["error"] = (
                 f"TimeoutError: The execution of test cases exceeded the allowed time limit of 5 seconds\
                       Please check if the function is taking too long to execute or\
                           if there are any infinite loops in the test cases."
             )
-    
-        
+    redis_client.set_value(key=execution_id, value=json.dumps(result), ex=settings.REDIS_EXPIRE_SEC)
 
-# we are gonna use redis to store the result of test cases in a hash with `execution_id` as key of it.
     
