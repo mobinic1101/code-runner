@@ -136,7 +136,7 @@ def extract_function(python_file, allowed_imports: set = None):
     return result
 
 
-def execute_function(func, args: Tuple, test_case_id: int):
+def _execute_function(func, args: Tuple, test_case_id: int):
     """
     Args:
         func (_type_): the `solve` function.
@@ -161,7 +161,7 @@ def run_tests(func, test_cases: List[TestCase], execution_id: str):
         futures = []
         for test_case in test_cases:
             future = executor.submit(
-                execute_function,
+                _execute_function,
                 **{"func": func, "args": test_case.input, "test_case_id": test_case.id},
             )
             futures.append(future)
