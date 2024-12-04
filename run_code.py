@@ -1,12 +1,13 @@
 import ast
 import json
+import os
 from typing import Tuple, List
 from concurrent.futures import ThreadPoolExecutor
 from .pydantic_models import TestCase
 from . import redis_operations
 
 
-FILE_PATH = "./uploaded_file.py"
+FILE_PATH = "./uploaded_files/uploaded_file.py"
 
 
 class NotAllowedImportError(Exception):
@@ -124,6 +125,7 @@ def extract_function(python_file, allowed_imports: set = None):
         result["error_message"] = (
             "Please wrap your solution in a function named 'solve'."
         )
+    os.remove(FILE_PATH) # cleanup!
     return result
 
 
