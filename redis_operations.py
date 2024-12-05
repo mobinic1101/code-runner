@@ -79,6 +79,9 @@ class RedisOperations:
             return {}
 
 
+redis_operations = RedisOperations()
+
+
 if __name__ == "__main__":
     redis_ops = RedisOperations()
 
