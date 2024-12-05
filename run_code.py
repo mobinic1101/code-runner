@@ -156,6 +156,14 @@ def _execute_function(func, args: Tuple, test_case_id: int):
 
 
 def run_tests(func, test_cases: List[TestCase], execution_id: str):
+    """run test cases in a thread pool using `concurrent.futures.ThreadPoolExecutor`.
+    if the `func` is a blocking function or it took more than {} seconds
+
+    Args:
+        func (_type_): _description_
+        test_cases (List[TestCase]): _description_
+        execution_id (str): _description_
+    """    
     result = {"execution_id": execution_id, "test_result": None, "error": None}
     with ThreadPoolExecutor() as executor:
         futures = []
@@ -173,9 +181,10 @@ def run_tests(func, test_cases: List[TestCase], execution_id: str):
             result["test_result"] = future.result(timeout=settings.RUN_TESTS_TIMEOUT)
         except TimeoutError as e:
             result["error"] = (
-                f"TimeoutError: The execution of test cases exceeded the allowed time limit of 5 seconds\
-                      Please check if the function is taking too long to execute or\
-                          if there are any infinite loops in the test cases."
+f"""TimeoutError: The execution of test cases exceeded the allowed time limit of
+    {settings.RUN_TESTS_TIMEOUT} seconds;
+    Please check if the function is taking too long to execute or
+    if there are any infinite loops in the test cases."""
             )
     redis_client.set_value(key=execution_id, value=json.dumps(result), ex=settings.REDIS_EXPIRE_SEC)
 
