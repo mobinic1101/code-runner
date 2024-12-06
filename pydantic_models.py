@@ -1,14 +1,12 @@
 from pydantic import BaseModel
-from typing import Optional, List, Set, Tuple
-
+from typing import List, Any
 
 class TestCase(BaseModel):
     id: int
-    input: Tuple = (None)
-    expected: Optional[List]
-
+    input: Any
+    expected: Any
 
 class Data(BaseModel):
     execution_id: str
-    allowed_imports: Set[str]
+    allowed_imports: List[str]
     test_cases: List[TestCase]

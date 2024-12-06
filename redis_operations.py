@@ -1,6 +1,6 @@
 import redis
 from typing import List, Optional, Dict
-from . import settings
+import settings
 
 class RedisOperations:
     def __init__(self, host: str = settings.REDIS_HOST, port: int = settings.REDIS_PORT, db: int = 0):

@@ -1,7 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, Form, Response, status, BackgroundTasks
 from typing import Annotated
-from . import run_code, pydantic_models
-from .redis_operations import redis_operations
+import run_code, pydantic_models, settings
+from redis_operations import redis_operations
 
 
 app = FastAPI()
@@ -9,9 +9,9 @@ app = FastAPI()
 
 @app.post("/run-code")
 async def run(
+    background_tasks: BackgroundTasks,
     python_file: Annotated[UploadFile, File],
     data: Annotated[pydantic_models.Data, Form],
-    background_tasks: BackgroundTasks
 ):
     res = run_code.extract_function(python_file, data.allowed_imports)
 
@@ -32,3 +32,7 @@ async def get_result(execution_id: str):
 
     redis_operations.delete_key(execution_id) # one time use values
     return result
+
+if __name__ == '__main__':
+    import uvicorn
+    uvicorn.run(app=app, host=settings.FASTAPI_HOST, port=settings.FASTAPI_PORT)

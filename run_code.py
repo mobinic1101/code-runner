@@ -3,9 +3,9 @@ import json
 import os
 from typing import Tuple, List
 from concurrent.futures import ThreadPoolExecutor
-from .pydantic_models import TestCase
-from . import redis_operations
-from . import settings
+from pydantic_models import TestCase
+import redis_operations
+import settings
 
 
 FILE_PATH = "./uploaded_files/uploaded_file.py"
@@ -95,7 +95,7 @@ def check_imports(code: str, allowed_imports: set):
 #     return {"res": res, "error": None, "message": "Code executed successfully."}
 
 
-def extract_function(python_file, allowed_imports: set = None):
+def extract_function(python_file, allowed_imports: List = None):
     """validate imports of the file and extract the solve function.
 
     Args:
@@ -109,7 +109,7 @@ def extract_function(python_file, allowed_imports: set = None):
     result = {"func": None, "error": None, "error_message": None}
 
     if not allowed_imports:
-        allowed_imports = set()
+        allowed_imports = []
 
     # writing the file to storage getting it ready to get imported
     code = write_to_file(FILE_PATH, python_file)
