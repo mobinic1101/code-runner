@@ -1,9 +1,8 @@
 import ast
 import json
 import os
-from typing import Tuple, List
-from concurrent.futures import ThreadPoolExecutor
-from pydantic_models import TestCase
+from typing import Tuple, List, Dict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import redis_operations
 import settings
 
@@ -16,9 +15,10 @@ class NotAllowedImportError(Exception):
     pass
 
 
-def write_to_file(filepath, file):
+async def write_to_file(filepath, file):
     with open(filepath, "w") as f:
-        code = file.read()
+        code =  await file.read()
+        code = code.decode("utf-8")
         f.write(code)
     return code
 
@@ -43,6 +43,25 @@ def check_imports(code: str, allowed_imports: set):
         if isinstance(node, ast.ImportFrom):
             if node.module not in allowed_imports:
                 raise NotAllowedImportError(f"Import '{node.module}' is not allowed")
+
+
+def convert_literal(test_cases):
+    """convert a string representation of various data types (like lists, 
+    dictionaries, strings, or integers) back into their actual data types.
+
+    Args:
+        objects: List[str]: string representation of objects to get converted
+    Returns:
+        list: list of converted datatypes
+    """
+    try:
+        obj =  ast.literal_eval(test_cases)
+        if not isinstance(obj, tuple):
+            obj = [obj]
+        return obj
+    except ValueError as e:
+        print("ERROR WHILE CONVERTING LITERALS: ", e)
+        return False
 
 
 # async def execute_code(file, args: Tuple, allowed_imports: set=None, timeout:int=5):
@@ -95,7 +114,7 @@ def check_imports(code: str, allowed_imports: set):
 #     return {"res": res, "error": None, "message": "Code executed successfully."}
 
 
-def extract_function(python_file, allowed_imports: List = None):
+async def extract_function(python_file, allowed_imports: List = None):
     """validate imports of the file and extract the solve function.
 
     Args:
@@ -112,11 +131,13 @@ def extract_function(python_file, allowed_imports: List = None):
         allowed_imports = []
 
     # writing the file to storage getting it ready to get imported
-    code = write_to_file(FILE_PATH, python_file)
+    code = await write_to_file(FILE_PATH, python_file)
+    print("incoming code:\n\t", code)
+    print("file exists?: ", os.path.exists(FILE_PATH))
 
     try:
         check_imports(code, allowed_imports)
-        import uploaded_file  # type: ignore
+        from uploaded_files import uploaded_file  # type: ignore
 
         result["func"] = uploaded_file.solve
     except NotAllowedImportError as e:
@@ -136,7 +157,7 @@ def extract_function(python_file, allowed_imports: List = None):
     return result
 
 
-def _execute_function(func, args: Tuple, test_case_id: int):
+def _execute_function(func, args: Tuple):
     """
     Args:
         func (_type_): the `solve` function.
@@ -145,7 +166,7 @@ def _execute_function(func, args: Tuple, test_case_id: int):
     Returns:
         dict: {"id": test_case id(int), "output": str|None, "error": str|None, "error_message": str|None}
     """
-    result = {"id": test_case_id, "output": None, "error": None, "error_message": None}
+    result = {"output": None, "error": None, "error_message": None}
     try:
         output = func(*args)
         result["output"] = output
@@ -155,7 +176,7 @@ def _execute_function(func, args: Tuple, test_case_id: int):
     return result
 
 
-def run_tests(func, test_cases: List[TestCase], execution_id: str):
+def run_tests(func, test_cases: List[Dict], execution_id: str):
     """run test cases in a thread pool using `concurrent.futures.ThreadPoolExecutor`.
     if the `func` is a blocking function or it took more than {} seconds
 
@@ -163,29 +184,35 @@ def run_tests(func, test_cases: List[TestCase], execution_id: str):
         func (_type_): _description_
         test_cases (List[TestCase]): _description_
         execution_id (str): _description_
-    """    
-    result = {"execution_id": execution_id, "test_result": None, "error": None}
+    """
+    final_result = {"execution_id": execution_id, "test_result": []}
     with ThreadPoolExecutor() as executor:
-        futures = []
         for test_case in test_cases:
+            test_result = {"id": None, "result": None, "error": None, "error_message": None}
             future = executor.submit(
                 _execute_function,
-                **{"func": func, "args": test_case.input, "test_case_id": test_case.id},
+                **{"func": func, "args": test_case.get("input")},
             )
-            futures.append(future)
-
-        try:
-            future = executor.submit(
-                lambda futures: [future.result() for future in futures], futures
-            )
-            result["test_result"] = future.result(timeout=settings.RUN_TESTS_TIMEOUT)
-        except TimeoutError as e:
-            result["error"] = (
-f"""TimeoutError: The execution of test cases exceeded the allowed time limit of
-    {settings.RUN_TESTS_TIMEOUT} seconds;
-    Please check if the function is taking too long to execute or
-    if there are any infinite loops in the test cases."""
-            )
-    redis_client.set_value(key=execution_id, value=json.dumps(result), ex=settings.REDIS_EXPIRE_SEC)
+            try:
+                # future = executor.submit(
+                #     lambda futures: [future.result() for future in futures], futures
+                # )
+                # result["test_result"] = future.result(timeout=settings.RUN_TESTS_TIMEOUT)
+                # print("futures: " ,futures)
+                test_result["id"] = test_case.get("id")
+                solve_result = future.result(timeout=settings.RUN_TESTS_TIMEOUT)
+                test_result["result"] = solve_result["output"]
+                test_result["error"] = solve_result["error"]
+                test_result["error_message"] = solve_result["error_message"]
+            except TimeoutError as e:
+                test_result["error"] = "TimeoutError"
+                test_result["error_message"] = (
+    f"""The execution of test case {test_case.get("id")} exceeded the allowed time limit of
+        {settings.RUN_TESTS_TIMEOUT} seconds;
+        Please check if the function is taking too long to execute or
+        if there are any infinite loops in the test case."""
+                )
+            final_result["test_result"].append(test_result)
+    redis_client.set_value(key=execution_id, value=json.dumps(final_result), ex=settings.REDIS_EXPIRE_SEC)
 
     
