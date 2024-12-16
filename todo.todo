@@ -1,1 +1,1 @@
-remove the uploaded file after the process is done.
+in in settings.py: define a function to find settings file
