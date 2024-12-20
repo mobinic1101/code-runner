@@ -4,7 +4,7 @@ def get_settings(path="/etc/leetcode_backend.json"):
     try:
         with open(path, "r") as file:
             return json.load(file)
-    except Exception as e:
+    except Exception:
         return {}
     
 settings_dict = get_settings()

@@ -1,9 +1,9 @@
 import ast
 from typing import List
-from .exceptions import NotAllowedImportError
+from fastapi import HTTPException
 
 
-def get_ast(file):
+def get_ast(source_code: str):
     """get the Abstract Syntax Tree of a file
 
     Args:
@@ -12,41 +12,46 @@ def get_ast(file):
     Returns:
         ast.AST: the AST of the file
     """
-    return ast.parse(file.read())
+    tree = ast.parse(source=source_code)
+    return tree
 
 
-def validate_imports(tree: ast.AST, allowed_imports: List):
-    """validate the imports of the file
+def validate_file(source_code: str, allowed_imports: List):
+    """validate the imports of the file as well as any syntax errors
 
     Args:
         tree (ast.AST): the AST of the file
         allowed_imports (set): a set of allowed imports
 
     Raises:
-        NotAllowedImportError: if an invalid import was found.
-        None: if all imports are valid
+        HTTPException: if there are any SyntaxErrors or if an invalid import was found
     """
+    # check for any syntax errors
+    try:
+        tree = get_ast(source_code=source_code)
+    except (SyntaxError, Exception) as e:
+        raise HTTPException(status_code=422, detail=f"VALIDATION ERROR: {str(e)}")
+    
+    # check for any invalid imports
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
                 if not alias.name in allowed_imports:
-                    raise NotAllowedImportError(f"Import '{alias.name}' is not allowed")
+                    raise HTTPException(422, f"VALIDATION ERROR: Import '{alias.name}' is not allowed")
         if isinstance(node, ast.ImportFrom):
             if node.module not in allowed_imports:
-                raise NotAllowedImportError(f"Import '{node.module}' is not allowed")
+                raise HTTPException(422, f"VALIDATION ERROR: Import '{node.module}' is not allowed")
 
-def _execute_python_code(file_obj):
+def _execute_python_code(source_code):
     """
-    Executes Python code from a file-like object.
+    Executes Python code from a string.
     Returns a list:
     [error_message (if any), namespace with executed code (if successful)].
     """
     result = [None, None]
-    try:
-        code = file_obj.read().decode()
-        
+    try:        
         # Compile and execute the code
-        compiled = compile(code, "<received_file>", "exec") 
+        compiled = compile(source_code, "<received_file>", "exec") 
         namespace = {}
         exec(compiled, namespace)
         result[1] = namespace  # Store the namespace if successful
@@ -56,20 +61,27 @@ def _execute_python_code(file_obj):
     return result
 
 
-def extract_function(file_obj, func_name: str):
-    """extracts a function from a file
+def extract_function(source_code: str, func_name: str):
+    """extracts a function from a python source code
 
     Args:
-        file_obj (_type_): _description_
+        source_code (str): string representation of a python file
         func_name (str): function name to get extracted
 
+    Raises:
+        HTTPException: if the function is not found
+
     Returns:
-        tuple: (error, function)
+        FunctionType
     """    
 
-    error, namespace = _execute_python_code(file_obj)
-    return error, namespace[func_name]
+    error, namespace = _execute_python_code(source_code)
+    if error or not namespace:
+        raise HTTPException(status_code=422, detail=error)
 
+    func = namespace.get(func_name)
+    return func
+    
 
 def convert_literal(test_cases):
     """convert a string representation of List/Tuple into a list[objects].
@@ -80,11 +92,7 @@ def convert_literal(test_cases):
         list: list of converted datatypes
         False: if any errors occurred during conversion
     """
-    try:
-        obj =  ast.literal_eval(test_cases)
-        if not isinstance(obj, tuple):
-            obj = [obj]
-        return obj
-    except ValueError as e:
-        print("ERROR WHILE CONVERTING LITERALS: ", e)
-        return False
+    obj =  ast.literal_eval(test_cases)
+    if not isinstance(obj, tuple):
+        obj = [obj]
+    return obj
