@@ -1,7 +1,21 @@
 import ast
+from typing import List
 from .exceptions import NotAllowedImportError
 
-def validate_imports(tree: ast.AST, allowed_imports: set):
+
+def get_ast(file):
+    """get the Abstract Syntax Tree of a file
+
+    Args:
+        file (file like object eg. open("file.py", "r")): UploadFile
+    
+    Returns:
+        ast.AST: the AST of the file
+    """
+    return ast.parse(file.read())
+
+
+def validate_imports(tree: ast.AST, allowed_imports: List):
     """validate the imports of the file
 
     Args:
@@ -58,11 +72,10 @@ def extract_function(file_obj, func_name: str):
 
 
 def convert_literal(test_cases):
-    """convert a string representation of various data types (like lists, 
-    dictionaries, strings, or integers) back into their actual data types.
+    """convert a string representation of List/Tuple into a list[objects].
 
     Args:
-        objects: List[str]: string representation of objects to get converted
+        test_cases: [str]: string representation of objects to get converted
     Returns:
         list: list of converted datatypes
         False: if any errors occurred during conversion

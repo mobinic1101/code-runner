@@ -1,13 +1,24 @@
-from fastapi import FastAPI, File, UploadFile, Form, status, BackgroundTasks, Response
+from fastapi import FastAPI, File, UploadFile, Form, status, BackgroundTasks, Response, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from typing import Annotated, List, Dict
-import run_code
-from run_code import redis_operations
+from run_code.exceptions import NotAllowedImportError
 import run_code.utils
+import run_code.run_tests
+from run_code import redis_operations
 import settings
+from dependencies import get_allowed_imports, get_test_cases
 
 
 app = FastAPI()
+
+
+def validate_imports(python_file, allowed_imports: List[str]):
+    tree = run_code.utils.get_ast(python_file)
+    try:
+        run_code.utils.validate_imports(tree, allowed_imports)
+    except NotAllowedImportError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 
 @app.post("/run-code")
@@ -15,37 +26,20 @@ async def run(
     background_tasks: BackgroundTasks,
     python_file: Annotated[UploadFile, File],
     execution_id: Annotated[str, Form()],
-    allowed_imports: Annotated[
-        str, Form(description="Comma separated list of allowed imports")
-    ],
-    test_cases: Annotated[
-        str,
-        Form(
-            description="example: '[{'input': [1, 2, 3], 'output': 6}, {'input': [1, 2, 3], 'output': 6}]'"
-        ),
-    ],
+    allowed_imports: List[str] = Depends(get_allowed_imports),
+    test_cases: List[Dict] = Depends(get_test_cases),
 ):
-    converted = run_code.utils.convert_literal(test_cases)
-    if not converted:
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={"message": "Invalid test cases"},
-        )
+    # validate imports
+    validate_imports(python_file, allowed_imports)
 
-    allowed_imports = [item.strip() for item in allowed_imports.split(",")]
-    test_cases = converted
-    print(test_cases)
-
+    # extract the `solve()` function
     error, func = run_code.utils.extract_function(python_file, "solve")
-
     if error:
         print("ERROR OCCURRED DURING EXTRACTING FUNCTION")
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={"message": error},
-        )
+        raise HTTPException(status_code=422, detail="Error occurred during extracting function")
 
-    background_tasks.add_task(run_code.run_tests, func, test_cases, execution_id)
+    # run tests
+    background_tasks.add_task(run_code.run_tests.run_tests, func, test_cases, execution_id)
 
     return JSONResponse(
         content={"message": "Code execution started.", "execution_id": execution_id},
@@ -59,7 +53,7 @@ async def get_result(execution_id: str):
     if not result:
         return Response(status_code=status.HTTP_404_NOT_FOUND)
 
-    redis_operations.delete_key(execution_id)  # one time use values
+    redis_operations.delete_key(execution_id)  # one-time use values
     return result
 
 
