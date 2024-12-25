@@ -9,6 +9,8 @@ from fastapi import (
 from fastapi.responses import JSONResponse
 from typing import Annotated, List, Dict
 from types import FunctionType
+import json
+
 import run_code.utils
 import run_code.run_tests
 from run_code.redis_operations import redis_operations
@@ -22,13 +24,16 @@ app = FastAPI()
 @app.post("/run-code")
 def run(
     background_tasks: BackgroundTasks,
-    func: Annotated[FunctionType, Depends(get_function)],
+    function: Annotated[FunctionType, Depends(get_function)],
     execution_id: Annotated[str, Form()],
     test_cases: List[Dict] = Depends(get_test_cases),
 ):
     # run tests
     background_tasks.add_task(
-        run_code.run_tests.run_tests, func, test_cases, execution_id
+        run_code.run_tests.run_tests,
+        function=function,
+        test_cases=test_cases,
+        execution_id=execution_id,
     )
 
     return JSONResponse(
@@ -40,11 +45,13 @@ def run(
 @app.get("/get-result/{execution_id}")
 def get_result(execution_id: str):
     result = redis_operations.get_value(execution_id)
+    
     if not result:
         return HTTPException(status_code=404, detail="Execution not found.")
 
+    json_result = json.loads(result)
     redis_operations.delete_key(execution_id)  # one-time use values
-    return result
+    return json_result
 
 
 if __name__ == "__main__":

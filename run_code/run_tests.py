@@ -40,12 +40,12 @@ Please check if the function is taking too long to execute or
 if there are any infinite loops in the test case."""
 
 
-def run_tests(func, test_cases: List[Dict], execution_id: str):
+def run_tests(function, test_cases: List[Dict], execution_id: str):
     final_result = {'execution_id': execution_id, 'test_result': None}
     result_queue = multiprocessing.Queue()
     processes = {
         multiprocessing.Process(
-            target=_execute_function, args=(func, testcase, result_queue)
+            target=_execute_function, args=(function, testcase, result_queue)
         ): testcase.get("id")
         for testcase in test_cases
     }
