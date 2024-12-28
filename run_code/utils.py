@@ -4,6 +4,9 @@ from typing import List
 from fastapi import HTTPException, UploadFile
 
 
+def func_error(func_name: str, line_number: int):
+    return f"VALIDATION ERROR line {line_number}: use of function '{func_name}' is not allowed."
+
 class PythonFile:
     def __init__(self, upload_file: UploadFile, allowed_imports: List):
         self.file = upload_file.file
@@ -43,15 +46,19 @@ class PythonFile:
             elif isinstance(node, ast.ImportFrom):
                 if node.module not in self.allowed_imports:
                     return False, f"VALIDATION ERROR: Import '{node.module}' is not allowed."
+                    
             # check for invalid functions
             elif isinstance(node, ast.Name) and node.id in invalid_functions: # 'compile'
-                return False, f"VALIDATION ERROR: use of function '{node.id}' is not allowed."
+                return False, func_error(node.id, node.lineno)
             elif isinstance(node, ast.Call):
                 if isinstance(node.func, ast.Name) and node.func.id in invalid_functions: # 'compile()'
-                    return False, f"VALIDATION ERROR: use of function '{node.id}' is not allowed."
-                elif isinstance(node.func, ast.Attribute): # module.compile 
+                    return False, func_error(node.func.id, node.lineno)
+                elif isinstance(node.func, ast.Attribute): # module.compile() 
                     if node.func.attr in invalid_functions:
-                        return False, f"VALIDATION ERROR: use of function '{node.func.attr}' is not allowed."
+                        return False, func_error(node.func.attr, node.lineno)
+            elif isinstance(node, ast.Attribute): # module.compile
+                if node.attr in invalid_functions:
+                    return False, func_error(node.attr, node.lineno)
         return True, None
     
     def _execute_python_code(self):
