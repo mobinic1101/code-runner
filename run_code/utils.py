@@ -184,4 +184,18 @@ def convert_literal(test_cases):
     obj =  ast.literal_eval(test_cases)
     if not isinstance(obj, tuple):
         obj = [obj]
-    return obj
+
+    obj = obj[0]
+    # obj will look like this: [{'id': 1, 'input': '[2, 7, 11, 15], 9', 'expected': '[0, 1]'},
+    #                           {'id': 2, 'input': '[3, 2, 4], 6', 'expected': '[1, 2]'}]
+    # as you see here the input/expected are in string format and we dont want that 
+    # down below we are converting those:
+    testcases = []
+    for testcase in obj:
+        new_testcase = testcase.copy()
+        for key in testcase:
+            if key == "input" or key == "expected":
+                # print("testcase[key]: ", testcase[key], type(testcase[key]))
+                new_testcase[key] = ast.literal_eval(testcase[key])
+        testcases.append(new_testcase)
+    return testcases

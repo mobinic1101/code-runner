@@ -41,6 +41,7 @@ if there are any infinite loops in the test case."""
 
 
 def run_tests(function, test_cases: List[Dict], execution_id: str):
+    print("test_cases: List[Dict] = ", test_cases)
     final_result = {'execution_id': execution_id, 'test_result': None}
     result_queue = multiprocessing.Queue()
     processes = {

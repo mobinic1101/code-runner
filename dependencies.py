@@ -35,11 +35,10 @@ def get_function(python_file: UploadFile=File(...), allowed_imports: List=Depend
 
 
 def get_test_cases(test_cases: str=Form(..., description=test_cases_description)) -> List[Dict]:
-    print(test_cases, f" before {type(test_cases)}")
+    # print(test_cases, f" before {type(test_cases)}")
     try:
-
-        result = run_code.utils.convert_literal(test_cases)[0]
+        result = run_code.utils.convert_literal(test_cases)
     except (SyntaxError, Exception) as e:
         raise HTTPException(status_code=422, detail="INVALID TEST CASE FORMAT: " + str(e))
-    print(result, f" after {type(result)}")
+    # print(result, f" after {type(result)}")
     return result
