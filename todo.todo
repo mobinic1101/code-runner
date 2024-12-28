@@ -1,1 +1,6 @@
-in in settings.py: define a function to find settings file
+debug this:
+INFO:     ::1:42182 - "POST /run-code HTTP/1.1" 200 OK
+TESTCASE [1] DONE.
+TESTCASE [2] DONE.
+final_result: {'execution_id': 'ae400554-cb86-4f17-b9b2-19051cc5e62f', 'test_result': [{'id': 1, 'output': None, 'error': 'ExecutionError', 'error_message': 'solve() takes 2 positional arguments but 17 were given'}, {'id': 2, 'output': None, 'error': 'ExecutionError', 'error_message': 'solve() takes 2 positional arguments but 12 were given'}]}
+INFO:     ::1:42198 - "GET /get-result/ae400554-cb86-4f17-b9b2-19051cc5e62f HTTP/1.1" 200 OK

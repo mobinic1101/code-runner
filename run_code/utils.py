@@ -33,24 +33,25 @@ class PythonFile:
         except (SyntaxError, Exception) as e:
             return False, f"VALIDATION ERROR: {str(e)}"
 
-        # check for invalid imports
+        invalid_functions = set({"compile", "eval", "exec"})
         for node in ast.walk(tree):
+            # check for invalid imports
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     if not alias.name in self.allowed_imports:
-                        return False, f"VALIDATION ERROR: Import '{alias.name}' is not allowed"
-            if isinstance(node, ast.ImportFrom):
+                        return False, f"VALIDATION ERROR: Import '{alias.name}' is not allowed."
+            elif isinstance(node, ast.ImportFrom):
                 if node.module not in self.allowed_imports:
-                    return False, f"VALIDATION ERROR: Import '{node.module}' is not allowed"
-        
-        # check for invalid functions
-        invalid_functions = set({"compile", "eval", "exec"})
-        pattern = re.compile(r"compile|eval|exec")
-        res = re.findall(pattern, self.source_code)    
-        for func in res:
-            if func in invalid_functions:
-                return False, f"VALIDATION ERROR: use of function '{func}' is not allowed"
-
+                    return False, f"VALIDATION ERROR: Import '{node.module}' is not allowed."
+            # check for invalid functions
+            elif isinstance(node, ast.Name) and node.id in invalid_functions: # 'compile'
+                return False, f"VALIDATION ERROR: use of function '{node.id}' is not allowed."
+            elif isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Name) and node.func.id in invalid_functions: # 'compile()'
+                    return False, f"VALIDATION ERROR: use of function '{node.id}' is not allowed."
+                elif isinstance(node.func, ast.Attribute): # module.compile 
+                    if node.func.attr in invalid_functions:
+                        return False, f"VALIDATION ERROR: use of function '{node.func.attr}' is not allowed."
         return True, None
     
     def _execute_python_code(self):
