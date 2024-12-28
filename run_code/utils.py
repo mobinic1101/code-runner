@@ -194,7 +194,7 @@ def convert_literal(test_cases):
     for testcase in obj:
         new_testcase = testcase.copy()
         for key in testcase:
-            if key == "input" or key == "expected":
+            if key == "input" or key == "expected" and isinstance(testcase[key], str):
                 # print("testcase[key]: ", testcase[key], type(testcase[key]))
                 new_testcase[key] = ast.literal_eval(testcase[key])
         testcases.append(new_testcase)
