@@ -47,7 +47,7 @@ def get_result(execution_id: str):
     result = redis_operations.get_value(execution_id)
     
     if not result:
-        return HTTPException(status_code=404, detail="Execution not found.")
+        raise HTTPException(status_code=404, detail="Execution not found.")
 
     json_result = json.loads(result)
     redis_operations.delete_key(execution_id)  # one-time use values
