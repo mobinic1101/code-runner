@@ -1,13 +1,18 @@
 import json
+import os
 
-def get_settings(path="/etc/leetcode_backend.json"):
+
+SETTINGS_PATH = os.environ.get("LEETCODE_SETTINGS_PATH")
+
+
+def get_settings(path):
     try:
         with open(path, "r") as file:
             return json.load(file)
     except Exception:
         return {}
     
-settings_dict = get_settings()
+settings_dict = get_settings(SETTINGS_PATH)
 
 FASTAPI_HOST = settings_dict.get("fastapi_host", "localhost")
 FASTAPI_PORT = int(settings_dict.get("fastapi_port", 5000))
