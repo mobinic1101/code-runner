@@ -1,11 +1,11 @@
-from fastapi import Form, File, HTTPException, UploadFile, Depends
-from typing import List, Dict
+from fastapi import Form, File, HTTPException, UploadFile, Depends, Header, Request
+from typing import List, Dict, Annotated
 import run_code.utils
 
 
 allowed_imports_description = "Comma separated list of allowed imports example: 'math, os'"
 test_cases_description = \
-    "example: '[{'id': 1, 'input': [1, 2], 'output': 3}, {'id': 2, 'input': [1, 4], 'output': 5}]'"
+    "example: '[{'id': 1, 'input': '[1, 2]', 'output': 3}, {'id': 2, 'input': '[1, 4]', 'output': 5}]'"
 function_not_found_description = """
 Function 'solve' not found. please wrap your solution in a function called 'solve'.
 """
