@@ -1,3 +1,4 @@
 fastapi==0.115.2
 redis==5.2.0
 uvicorn==0.31.0
+pathos==0.3.3
